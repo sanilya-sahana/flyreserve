@@ -13,6 +13,7 @@ function renderAt(path: string): void {
           <Route path="booking/select" element={<div>SELECT</div>} />
           <Route path="booking/passengers" element={<div>PAX</div>} />
           <Route path="booking/checkout" element={<div>CHECKOUT</div>} />
+          <Route path="*" element={<div>NOTFOUND</div>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -39,11 +40,25 @@ describe('BookingLayout', () => {
     expect(current?.textContent).toContain('Passengers');
   });
 
-  it('currentStepIndex maps the path to the correct index', () => {
+  it('hides the progress nav and emits no aria-current on unknown paths', () => {
+    // Regression guard for SAH-38 F1: previously `currentStepIndex` fell back
+    // to 0 for unknown paths, silently marking Search active on
+    // /booking/confirmation and every 404. The stepper must not render at all.
+    renderAt('/somewhere-unknown');
+    expect(
+      screen.queryByRole('navigation', { name: 'Booking progress' }),
+    ).not.toBeInTheDocument();
+    expect(document.querySelector('[aria-current="step"]')).toBeNull();
+  });
+
+  it('currentStepIndex maps known wizard paths and returns -1 on unknown', () => {
     expect(currentStepIndex('/booking/search')).toBe(0);
     expect(currentStepIndex('/booking/select?x=1')).toBe(1);
     expect(currentStepIndex('/booking/passengers')).toBe(2);
     expect(currentStepIndex('/booking/checkout')).toBe(3);
-    expect(currentStepIndex('/something-else')).toBe(0);
+    // Post-purchase confirmation and other unknowns must NOT map to a wizard step.
+    expect(currentStepIndex('/booking/confirmation')).toBe(-1);
+    expect(currentStepIndex('/something-else')).toBe(-1);
+    expect(currentStepIndex('/')).toBe(-1);
   });
 });

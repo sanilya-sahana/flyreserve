@@ -21,37 +21,39 @@ export function BookingLayout(): JSX.Element {
         </div>
       </header>
 
-      <nav
-        aria-label="Booking progress"
-        className="border-b border-surface-border bg-surface"
-      >
-        <ol className="mx-auto flex max-w-5xl gap-2 overflow-x-auto px-6 py-3 text-sm">
-          {BOOKING_STEPS.map((step, idx) => {
-            const isActive = idx === activeIndex;
-            const isDone = idx < activeIndex;
-            return (
-              <li key={step.path} className="flex items-center gap-2">
-                <span
-                  aria-current={isActive ? 'step' : undefined}
-                  className={cn(
-                    'inline-flex h-7 items-center rounded-full px-3',
-                    isActive && 'bg-brand-500 text-text-onBrand',
-                    isDone && 'bg-brand-100 text-brand-700',
-                    !isActive && !isDone && 'bg-surface-muted text-text-muted',
-                  )}
-                >
-                  {step.shortLabel}
-                </span>
-                {idx < BOOKING_STEPS.length - 1 ? (
-                  <span aria-hidden="true" className="text-text-muted">
-                    /
+      {activeIndex >= 0 ? (
+        <nav
+          aria-label="Booking progress"
+          className="border-b border-surface-border bg-surface"
+        >
+          <ol className="mx-auto flex max-w-5xl gap-2 overflow-x-auto px-6 py-3 text-sm">
+            {BOOKING_STEPS.map((step, idx) => {
+              const isActive = idx === activeIndex;
+              const isDone = idx < activeIndex;
+              return (
+                <li key={step.path} className="flex items-center gap-2">
+                  <span
+                    aria-current={isActive ? 'step' : undefined}
+                    className={cn(
+                      'inline-flex h-7 items-center rounded-full px-3',
+                      isActive && 'bg-brand-500 text-text-onBrand',
+                      isDone && 'bg-brand-100 text-brand-700',
+                      !isActive && !isDone && 'bg-surface-muted text-text-muted',
+                    )}
+                  >
+                    {step.shortLabel}
                   </span>
-                ) : null}
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
+                  {idx < BOOKING_STEPS.length - 1 ? (
+                    <span aria-hidden="true" className="text-text-muted">
+                      /
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+      ) : null}
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
         <Outlet />
