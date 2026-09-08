@@ -1,0 +1,10 @@
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+/**
+ * Tailwind-aware class name combiner.
+ * Deduplicates conflicting utility classes so caller overrides win predictably.
+ */
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
+}
