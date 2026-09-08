@@ -14,7 +14,13 @@ import { CheckoutService } from './services/checkoutService.js';
 import { MockFlightProvider } from './providers/mock/mockFlightProvider.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
-export function createApp(): express.Express {
+export interface AppDependencies {
+  flightSearchService?: FlightSearchService;
+  reservationService?: ReservationService;
+  checkoutService?: CheckoutService;
+}
+
+export function createApp(dependencies: AppDependencies = {}): express.Express {
   const app = express();
 
   app.use(express.json());
@@ -26,9 +32,9 @@ export function createApp(): express.Express {
 
   // Wire provider and services
   const flightProvider = new MockFlightProvider();
-  const flightSearchService = new FlightSearchService(flightProvider);
-  const reservationService = new ReservationService();
-  const checkoutService = new CheckoutService(flightSearchService, reservationService);
+  const flightSearchService = dependencies.flightSearchService ?? new FlightSearchService(flightProvider);
+  const reservationService = dependencies.reservationService ?? new ReservationService();
+  const checkoutService = dependencies.checkoutService ?? new CheckoutService(flightSearchService, reservationService);
 
   // Mount routers
   app.use('/api/v1/flights', createFlightSearchRouter(flightSearchService));

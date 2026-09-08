@@ -42,6 +42,7 @@ export class CheckoutError extends Error {
   constructor(
     message: string,
     public readonly field?: string,
+    public readonly notFound: boolean = false,
   ) {
     super(message);
     this.name = 'CheckoutError';
@@ -222,7 +223,7 @@ export class CheckoutService {
   confirmBooking(bookingId: string, providerPaymentId: string): Booking {
     const booking = this.bookings.get(bookingId);
     if (!booking) {
-      throw new CheckoutError(`Booking ${bookingId} not found`);
+      throw new CheckoutError(`Booking ${bookingId} not found`, undefined, true);
     }
     if (booking.status !== 'PAYMENT_PENDING') {
       throw new CheckoutError(
