@@ -134,4 +134,48 @@ describe('CheckoutService', () => {
     expect(forAbc).toHaveLength(1);
     expect(forAbc[0].reservation.userId).toBe('user-abc');
   });
+
+  // Regression: SAH-37 — the old guard at lines 139-142 compared passengers.length
+  // to pricePerPassenger.amountMinorUnits and ALSO required passengers.length < 1,
+  // making the entire branch permanently unreachable.  These tests confirm that
+  // multiple valid passengers are accepted and that the pricing snapshot correctly
+  // records the passenger count.
+  it('accepts two passengers without error (SAH-37 regression)', async () => {
+    const token = await getValidToken(flightService);
+    const twoPassengers = [
+      { firstName: 'Jane', lastName: 'Smith', title: 'Ms' as const, type: 'ADULT' as const },
+      { firstName: 'John', lastName: 'Smith', title: 'Mr' as const, type: 'ADULT' as const },
+    ];
+    const booking = await checkoutService.checkout({
+      ...validInput,
+      resultToken: token,
+      passengers: twoPassengers,
+    });
+    expect(booking.status).toBe('PAYMENT_PENDING');
+    expect(booking.passengers).toHaveLength(2);
+  });
+
+  it('pricing snapshot records correct passenger count for multi-passenger booking (SAH-37 regression)', async () => {
+    const token = await getValidToken(flightService);
+    const twoPassengers = [
+      { firstName: 'Jane', lastName: 'Smith', title: 'Ms' as const, type: 'ADULT' as const },
+      { firstName: 'John', lastName: 'Smith', title: 'Mr' as const, type: 'ADULT' as const },
+    ];
+    const booking = await checkoutService.checkout({
+      ...validInput,
+      resultToken: token,
+      passengers: twoPassengers,
+    });
+    // pricing.passengerCount must match the actual passenger list length.
+    expect(booking.pricing.passengerCount).toBe(2);
+    // Base fare must be 2× the per-passenger price (no coupon, flat service fee excluded).
+    const expectedBaseFare = booking.pricing.baseFarePerPassenger.amountMinorUnits * 2;
+    // Derive baseFare = total - serviceFee - tax + couponDiscount
+    const derivedBaseFare =
+      booking.pricing.total.amountMinorUnits -
+      booking.pricing.serviceFee.amountMinorUnits -
+      booking.pricing.tax.amountMinorUnits +
+      booking.pricing.couponDiscount.amountMinorUnits;
+    expect(derivedBaseFare).toBe(expectedBaseFare);
+  });
 });

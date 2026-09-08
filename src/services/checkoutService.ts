@@ -136,10 +136,10 @@ export class CheckoutService {
       );
     }
 
-    // 4. Validate passenger count matches flight
-    if (passengers.length !== flightResult.pricePerPassenger.amountMinorUnits && passengers.length < 1) {
-      // passenger count check: any positive count is fine for now
-    }
+    // 4. Passenger count: any positive count is accepted for launch scope.
+    //    The earlier guard (step 1) already guarantees passengers.length >= 1.
+    //    A stricter per-flight capacity rule can be added here when the
+    //    provider contract exposes a maxPassengers field (follow-on scope).
 
     // 5. Resolve coupon
     let coupon: Coupon | undefined;
