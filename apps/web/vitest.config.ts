@@ -1,7 +1,10 @@
 import { defineConfig, mergeConfig } from 'vitest/config';
 import viteConfig from './vite.config';
 
-// Vitest config — Gate 5 coverage wired to sonar-project.properties at repo root.
+// Vitest config — Gate 5 coverage.
+// The LCOV report emitted at apps/web/coverage/lcov.info is consumed by the
+// repo-root sonar-project.properties (sonar.javascript.lcov.reportPaths
+// includes apps/web/coverage/lcov.info).
 export default mergeConfig(
   viteConfig,
   defineConfig({
@@ -22,12 +25,14 @@ export default mergeConfig(
           'src/routes/index.tsx',
         ],
         thresholds: {
-          // Gate 5 minimum. Frontend shell currently below 70% overall while
-          // real screen logic is unblocked; raise thresholds once screens land.
-          lines: 40,
-          functions: 40,
-          branches: 40,
-          statements: 40,
+          // Gate 5 minimum (org-wide 70% floor). Current coverage on
+          // feat/sah-19-booking-flow-web-shell is ~99% (see QA review on
+          // SAH-40); we set the enforced floor at the Gate 5 minimum so
+          // future placeholder additions cannot silently regress below it.
+          lines: 70,
+          functions: 70,
+          branches: 70,
+          statements: 70,
         },
       },
     },
