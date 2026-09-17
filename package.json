@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "FlyReserve - flight booking and temporary reservation platform",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",

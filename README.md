@@ -75,7 +75,35 @@ cd apps/web && pnpm test
 
 # Run backend tests with coverage
 pnpm test:coverage
+
+# Run API + PostgreSQL baseline with Docker Compose
+docker compose up --build
 ```
+
+## Container and deploy baseline (SAH-64)
+
+This repository now includes an inspection-first container baseline for downstream teams:
+
+- `Dockerfile` builds and runs the Node API from this repo root.
+- `docker-compose.yml` defines `api` + `db` services with a PostgreSQL healthcheck and minimal local wiring.
+- `.dockerignore` excludes local-only files (`node_modules`, coverage outputs, `.env*`) from image context.
+
+Docker baseline quick start:
+
+```bash
+docker compose up --build
+```
+
+Container assumptions for inspection mode:
+
+- `AUTH_BYPASS=true` in `docker-compose.yml` is dev-only and must not be used in staging/production.
+- DB credentials and `INTERNAL_API_SECRET` in `docker-compose.yml` are placeholders for local inspection only.
+- Postgres is bound to `127.0.0.1:5432` for local-only access.
+
+Scope and intent:
+
+- This is a minimal inspection and local verification baseline, not a production-hardened deployment stack.
+- Image hardening, secret injection strategy, and production runtime topology remain follow-up items under SAH-16.
 
 ## Database setup
 
@@ -110,8 +138,8 @@ The following items are stubs in this skeleton and require follow-up before prod
 2. **Payment providers** — Stripe/PayPal keys not yet in `.env.example` values. Integration callbacks are defined in the domain but not yet wired to real provider SDKs (SAH-58).
 3. **Flight data provider** — `MockFlightProvider` is the only concrete provider. A real provider selection is an open item (SAH-16).
 4. **Database migrations** — `001_flyreserve_booking_baseline.sql` is the baseline schema. A migration runner (Flyway, Liquibase, or custom) has not been selected yet.
-5. **Monorepo workspace root** — `apps/web` is scaffolded but the full pnpm workspace root (`pnpm-workspace.yaml` pointing at `apps/*`) is not yet wired. Run `apps/web` independently with its own `pnpm install` until that lands (tracked: Engineering Manager SAH-38 F2).
-6. **Docker / deploy manifests** — Dockerfile and docker-compose are not yet created (DevOps, SAH-15).
+5. **Monorepo workspace root** — `pnpm-workspace.yaml` now points at `apps/*` so root installs include `apps/web`. Keep package additions aligned with workspace globs.
+6. **Docker / deploy manifests** — A minimal `Dockerfile` + `docker-compose.yml` baseline now exists for inspection. Cloud deploy manifests (for example Fly, Kubernetes, or Terraform-backed runtime modules) are still pending architecture selection under SAH-16/SAH-15.
 
 ## Contributing
 
