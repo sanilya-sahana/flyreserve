@@ -25,9 +25,15 @@ export function createApp(dependencies: AppDependencies = {}): express.Express {
 
   app.use(express.json());
 
-  // Health check
+  // Health check — DevOps liveness probe
+  // Returns status, version, uptime (seconds), and ISO timestamp for monitoring systems.
   app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', version: '0.1.0' });
+    res.json({
+      status: 'ok',
+      version: process.env.npm_package_version ?? '0.1.0',
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    });
   });
 
   // Wire provider and services
