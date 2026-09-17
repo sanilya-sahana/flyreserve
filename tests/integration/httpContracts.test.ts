@@ -58,6 +58,31 @@ async function createBooking(app: ReturnType<typeof createApp>, token = userToke
   });
 }
 
+describe('GET /health', () => {
+  it('returns 200 with status ok, version, uptime, and timestamp', async () => {
+    const app = createApp();
+    const response = await request(app).get('/health');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      status: 'ok',
+      version: expect.any(String),
+      uptime: expect.any(Number),
+      timestamp: expect.any(String),
+    });
+    // timestamp must be a valid ISO-8601 date
+    expect(() => new Date(response.body.timestamp as string)).not.toThrow();
+    // uptime must be non-negative
+    expect(response.body.uptime as number).toBeGreaterThanOrEqual(0);
+  });
+
+  it('does not require authentication', async () => {
+    const app = createApp();
+    const response = await request(app).get('/health');
+    expect(response.status).toBe(200);
+  });
+});
+
 describe('HTTP contract integration', () => {
   afterEach(() => {
     delete process.env['INTERNAL_API_SECRET'];
