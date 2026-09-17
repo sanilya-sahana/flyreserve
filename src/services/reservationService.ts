@@ -64,7 +64,7 @@ export class ReservationService {
    * For now it generates a mock PNR and stores the hold locally.
    */
   createReservation(input: CreateReservationInput): Reservation {
-    const { flightResult, validity, userId } = input;
+    const { validity, userId } = input;
 
     const now = new Date();
     const reservation: Reservation = {

@@ -220,7 +220,7 @@ export class CheckoutService {
    * Confirms a booking after successful payment.
    * Updates reservation to CONFIRMED and booking to CONFIRMED.
    */
-  confirmBooking(bookingId: string, providerPaymentId: string): Booking {
+  confirmBooking(bookingId: string, _providerPaymentId: string): Booking {
     const booking = this.bookings.get(bookingId);
     if (!booking) {
       throw new CheckoutError(`Booking ${bookingId} not found`, undefined, true);
