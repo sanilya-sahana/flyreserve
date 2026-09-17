@@ -70,8 +70,11 @@ describe('GET /health', () => {
       uptime: expect.any(Number),
       timestamp: expect.any(String),
     });
-    // timestamp must be a valid ISO-8601 date
-    expect(() => new Date(response.body.timestamp as string)).not.toThrow();
+    // timestamp must be a valid ISO-8601 date — Date.parse returns NaN for invalid strings
+    const ts = response.body.timestamp as string;
+    expect(Number.isNaN(Date.parse(ts))).toBe(false);
+    // additionally confirm the string looks like ISO-8601 (ends with Z or offset)
+    expect(ts).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*Z$/);
     // uptime must be non-negative
     expect(response.body.uptime as number).toBeGreaterThanOrEqual(0);
   });
