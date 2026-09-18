@@ -11,12 +11,10 @@
  * Mounting them now prevents accidental PII exposure if the service is run
  * in a non-local environment before the full auth stack lands.
  *
- * DEPLOYMENT NOTE: In development, set AUTH_BYPASS=true in the environment to
- * skip auth checks. This variable MUST NOT be set in staging or production.
- * In all environments without AUTH_BYPASS, requests must carry an
- * `Authorization: Bearer <token>` header; a placeholder principal is attached.
- * Full signature verification will replace this once Cybersecurity publishes
- * the JWKS contract.
+ * DEPLOYMENT NOTE: In development/test/local only, set AUTH_BYPASS=true in the
+ * environment to skip auth checks. This variable MUST NOT be set in staging or
+ * production. Production-like environments fail closed at startup until real
+ * JWT/JWKS verification replaces the placeholder bearer-token identity path.
  */
 
 import type { Request, Response, NextFunction } from 'express';
@@ -39,6 +37,38 @@ export interface AuthPrincipal {
 }
 
 const AUTH_BYPASS = process.env['AUTH_BYPASS'] === 'true';
+const PRODUCTION_LIKE_ENVS = new Set(['production', 'prod', 'staging', 'stage']);
+const PLACEHOLDER_INTERNAL_SECRETS = new Set(['changeme-internal-secret', 'change-me', 'changeme']);
+
+function normalizedEnvValue(name: string): string | null {
+  return process.env[name]?.trim().toLowerCase() || null;
+}
+
+function isProductionLikeRuntime(): boolean {
+  return ['APP_ENV', 'DEPLOYMENT_ENV', 'ENVIRONMENT', 'NODE_ENV'].some((name) => {
+    const value = normalizedEnvValue(name);
+    return value ? PRODUCTION_LIKE_ENVS.has(value) : false;
+  });
+}
+
+function assertSafeAuthConfiguration(): void {
+  if (!isProductionLikeRuntime()) return;
+
+  if (AUTH_BYPASS) {
+    throw new Error('Unsafe auth configuration: AUTH_BYPASS=true is only allowed in local/dev/test environments.');
+  }
+
+  const internalSecret = process.env['INTERNAL_API_SECRET']?.trim();
+  if (!internalSecret || PLACEHOLDER_INTERNAL_SECRETS.has(internalSecret.toLowerCase())) {
+    throw new Error('Unsafe auth configuration: production/staging requires a non-placeholder INTERNAL_API_SECRET.');
+  }
+
+  throw new Error(
+    'Unsafe auth configuration: production/staging requires real JWT/JWKS verification before placeholder bearer-token identity can run.',
+  );
+}
+
+assertSafeAuthConfiguration();
 
 /**
  * Requires a bearer token on the request.
@@ -48,8 +78,8 @@ const AUTH_BYPASS = process.env['AUTH_BYPASS'] === 'true';
  *   - Otherwise: requires `Authorization: Bearer <anything>` header and
  *     attaches a principal whose userId is the token value itself.
  *
- * Real verification (JWKS, audience, expiry) must be added by Cybersecurity
- * before this service ships to staging or production.
+ * Real verification (JWKS, issuer, audience, expiry) must be added before this
+ * service ships to staging or production; startup currently fails closed there.
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (AUTH_BYPASS) {

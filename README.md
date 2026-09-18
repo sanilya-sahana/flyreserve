@@ -53,7 +53,7 @@ Flight booking and temporary reservation platform. Customers can search flights,
 **Open prerequisite items** (tracked under [SAH-16](https://github.com/sanilya-sahana/flyreserve/issues)):
 - Stripe and PayPal credentials not yet provisioned
 - External flight-data provider not yet selected; `MockFlightProvider` is used in development
-- JWT/JWKS auth stack not yet wired (stub in `src/middleware/auth.ts`); use `AUTH_BYPASS=true` locally
+- JWT/JWKS auth stack not yet wired (stub in `src/middleware/auth.ts`); use `APP_ENV=development AUTH_BYPASS=true` locally only
 
 ## Quick start
 
@@ -100,7 +100,17 @@ Both migrations are idempotent (`CREATE TABLE IF NOT EXISTS` / `DO $$ ... $$ gua
 | POST | `/api/v1/bookings/confirm` | Confirm booking after payment |
 
 Auth: `Authorization: Bearer <token>` required on all endpoints except `/health`.  
-In development, set `AUTH_BYPASS=true` to skip token checks.
+In development/test only, set `AUTH_BYPASS=true` to skip token checks. If `APP_ENV`, `DEPLOYMENT_ENV`, `ENVIRONMENT`, or `NODE_ENV` is `staging`, `stage`, `production`, or `prod`, the service fails closed when `AUTH_BYPASS=true`, when `INTERNAL_API_SECRET` is missing/placeholder, or while the placeholder bearer-token identity path is still active.
+
+### JWT/JWKS contract
+
+Staging and production must not use the placeholder bearer-token identity path. Real verification must enforce:
+
+- `JWT_ISSUER`: required issuer; reject tokens whose `iss` does not exactly match.
+- `JWT_AUDIENCE`: required API audience; reject tokens whose `aud` does not include this value.
+- `JWKS_URI`: required HTTPS JWKS endpoint used to validate JWT signatures and key ids.
+- Required claims: `sub`, `iss`, `aud`, `exp`, `iat`; reject expired, not-yet-valid, unsigned, wrong-algorithm, unknown-key, or malformed tokens.
+- Fail-closed behavior: missing env, JWKS fetch/cache failure without a valid cached key, verification errors, or absent authorization all return 401/403 and must not attach `req.auth`.
 
 ## Open assumptions (SAH-63)
 
