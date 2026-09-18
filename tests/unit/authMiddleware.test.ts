@@ -4,7 +4,7 @@
  * and that the auth bypass mode works in development.
  */
 
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 
 function mockReqRes(headers: Record<string, string> = {}): {
@@ -21,13 +21,16 @@ function mockReqRes(headers: Record<string, string> = {}): {
 }
 
 describe('requireAuth', () => {
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.resetModules();
   });
 
   it('returns 401 when Authorization header is missing', async () => {
-    vi.unstubAllEnvs();
     const { requireAuth } = await import('../../src/middleware/auth.js');
     const { req, res, next } = mockReqRes();
     requireAuth(req as Request, res as unknown as Response, next as NextFunction);
@@ -36,7 +39,6 @@ describe('requireAuth', () => {
   });
 
   it('returns 401 when Authorization header is not Bearer', async () => {
-    vi.unstubAllEnvs();
     const { requireAuth } = await import('../../src/middleware/auth.js');
     const { req, res, next } = mockReqRes({ authorization: 'Basic abc' });
     requireAuth(req as Request, res as unknown as Response, next as NextFunction);
@@ -45,7 +47,6 @@ describe('requireAuth', () => {
   });
 
   it('returns 401 when Bearer token is empty', async () => {
-    vi.unstubAllEnvs();
     const { requireAuth } = await import('../../src/middleware/auth.js');
     const { req, res, next } = mockReqRes({ authorization: 'Bearer ' });
     requireAuth(req as Request, res as unknown as Response, next as NextFunction);
@@ -54,7 +55,6 @@ describe('requireAuth', () => {
   });
 
   it('attaches principal and calls next with a valid bearer token', async () => {
-    vi.unstubAllEnvs();
     const { requireAuth } = await import('../../src/middleware/auth.js');
     const { req, res, next } = mockReqRes({ authorization: 'Bearer user-token-123' });
     requireAuth(req as Request, res as unknown as Response, next as NextFunction);
@@ -64,6 +64,7 @@ describe('requireAuth', () => {
 
   it('bypasses auth and attaches dev principal when AUTH_BYPASS=true', async () => {
     vi.stubEnv('AUTH_BYPASS', 'true');
+    vi.stubEnv('NODE_ENV', 'development');
     vi.resetModules();
     const { requireAuth } = await import('../../src/middleware/auth.js');
     const { req, res, next } = mockReqRes();
@@ -71,9 +72,29 @@ describe('requireAuth', () => {
     expect(next).toHaveBeenCalled();
     expect((req as any).auth).toEqual({ userId: 'dev-bypass-user', roles: ['user'] });
   });
+
+  it('fails closed at startup when AUTH_BYPASS=true in production', async () => {
+    vi.stubEnv('AUTH_BYPASS', 'true');
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.resetModules();
+
+    await expect(import('../../src/middleware/auth.js')).rejects.toThrow('AUTH_BYPASS=true is only allowed');
+  });
+
+  it('fails closed at startup when production would use placeholder bearer-token identity', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('INTERNAL_API_SECRET', 'real-internal-secret');
+    vi.resetModules();
+
+    await expect(import('../../src/middleware/auth.js')).rejects.toThrow('requires real JWT/JWKS verification');
+  });
 });
 
 describe('requireInternalAuth', () => {
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.resetModules();
@@ -111,11 +132,20 @@ describe('requireInternalAuth', () => {
 
   it('bypasses auth when AUTH_BYPASS=true', async () => {
     vi.stubEnv('AUTH_BYPASS', 'true');
+    vi.stubEnv('NODE_ENV', 'development');
     vi.resetModules();
     const { requireInternalAuth } = await import('../../src/middleware/auth.js');
     const { req, res, next } = mockReqRes();
     requireInternalAuth(req as Request, res as unknown as Response, next as NextFunction);
     expect(next).toHaveBeenCalled();
     expect((req as any).auth).toEqual({ userId: 'internal-bypass', roles: ['internal'] });
+  });
+
+  it('fails closed at startup when staging uses the placeholder INTERNAL_API_SECRET', async () => {
+    vi.stubEnv('APP_ENV', 'staging');
+    vi.stubEnv('INTERNAL_API_SECRET', 'changeme-internal-secret');
+    vi.resetModules();
+
+    await expect(import('../../src/middleware/auth.js')).rejects.toThrow('non-placeholder INTERNAL_API_SECRET');
   });
 });
